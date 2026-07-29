@@ -1,0 +1,5 @@
+node_modules/
+build/
+конкуренты/
+dist/assets/
+dist/index.html
