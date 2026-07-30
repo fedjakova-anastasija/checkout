@@ -26,6 +26,12 @@ const prepaymentOptions = [
   { value: '100', title: '100% предоплата', amount: '4 000 ₽' },
 ];
 
+const paymentExperimentTotal = 41500;
+const paymentExperimentLegalPrepaymentOptions = [
+  { value: 'first-days', label: 'Первые 4 суток', amount: 12450 },
+  { value: 'half', label: '50%', amount: 20750 },
+];
+
 const paymentMethods = [
   {
     value: 'card',
@@ -58,6 +64,49 @@ const paymentMethods = [
     availableFor: [{ stage: 'now', prepayment: '100' }],
   },
 ];
+
+const paymentRedesignGroups = {
+  later: {
+    notice: 'Сейчас вы не платите за бронирование!',
+    methods: [
+      {
+        value: 'bank-company',
+        icon: 'bank',
+        title: 'Банковский перевод для юрлиц.',
+        prepaymentSelector: true,
+        restDetails: ['Счет нужно оплатить не позднее 2 августа 2026.'],
+      },
+      {
+        value: 'hotel',
+        icon: 'hotel',
+        title: 'При заселении.',
+      },
+      {
+        value: 'delayed-card',
+        brands: ['VISA', 'MC'],
+        title: 'Банковская карта.',
+        badge: 'Отложенный платёж',
+        restDetails: ['Ссылка на оплату первых суток придет на почту.', 'Оплатите не позднее Чт, 26 ноября 2026, 11:59 (GMT+7).'],
+      },
+    ],
+  },
+  now: {
+    notice: 'Бесплатная отмена до 24 ноября, 20:00.',
+    methods: [
+      {
+        value: 'card',
+        brands: ['МИР', 'VISA', 'MC'],
+        title: 'Банковская карта',
+        recommended: true,
+      },
+      {
+        value: 'sbp',
+        icon: 'sbp',
+        title: 'Система быстрых платежей (СБП)',
+      },
+    ],
+  },
+};
 
 const paymentGroups = {
   later: {
@@ -100,12 +149,52 @@ const paymentGroups = {
   },
 };
 
+function formatRub(amount) {
+  return `${String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} ₽`;
+}
+
+function getLegalPrepaymentOption(value) {
+  return paymentExperimentLegalPrepaymentOptions.find((option) => option.value === value) ?? paymentExperimentLegalPrepaymentOptions[0];
+}
+
+function getPaymentRedesignMethodSummary(stage, methodValue, legalPrepayment) {
+  if (stage === 'now') {
+    return {
+      nowAmount: paymentExperimentTotal,
+      restAmount: 0,
+      now: formatRub(paymentExperimentTotal),
+      rest: formatRub(0),
+    };
+  }
+
+  if (methodValue === 'bank-company') {
+    const nowAmount = getLegalPrepaymentOption(legalPrepayment).amount;
+
+    return {
+      nowAmount,
+      restAmount: paymentExperimentTotal - nowAmount,
+      now: formatRub(nowAmount),
+      rest: formatRub(paymentExperimentTotal - nowAmount),
+    };
+  }
+
+  return {
+    nowAmount: 0,
+    restAmount: paymentExperimentTotal,
+    now: formatRub(0),
+    rest: formatRub(paymentExperimentTotal),
+  };
+}
+
 function App({ variant = 'baseline' }) {
   const isNext = variant === 'next';
+  const isPayment = variant === 'payment';
+  const pageClassName = ['checkout-page', isNext ? 'checkout-page-next' : '', isPayment ? 'checkout-page-payment' : ''].filter(Boolean).join(' ');
   const [bookingFor, setBookingFor] = useState('self');
   const [payStage, setPayStage] = useState('later');
   const [selectedPrepayment, setSelectedPrepayment] = useState('none');
-  const [selectedPayment, setSelectedPayment] = useState('card');
+  const [selectedLegalPrepayment, setSelectedLegalPrepayment] = useState('first-days');
+  const [selectedPayment, setSelectedPayment] = useState(isPayment ? paymentRedesignGroups.later.methods[0].value : 'card');
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isArrivalOpen, setIsArrivalOpen] = useState(false);
   const [isDepartureOpen, setIsDepartureOpen] = useState(false);
@@ -138,7 +227,14 @@ function App({ variant = 'baseline' }) {
   const visiblePrepaymentOptions = prepaymentOptions.filter((option) => (payStage === 'now' ? option.value === '100' : (isNext ? ['none', '30', '50'] : ['none', '30', '100']).includes(option.value)));
   const filteredPaymentMethods = paymentMethods.filter((method) => isPaymentMethodAvailable(method, payStage, selectedPrepayment));
 
-  const amountNow = useMemo(() => prepaymentOptions.find((option) => option.value === selectedPrepayment)?.amount ?? '0 ₽', [selectedPrepayment]);
+  const paymentRedesignSummary = useMemo(
+    () => getPaymentRedesignMethodSummary(payStage, selectedPayment, selectedLegalPrepayment),
+    [payStage, selectedLegalPrepayment, selectedPayment],
+  );
+  const amountNow = useMemo(() => (isPayment ? paymentRedesignSummary.now : prepaymentOptions.find((option) => option.value === selectedPrepayment)?.amount ?? '0 ₽'), [isPayment, paymentRedesignSummary.now, selectedPrepayment]);
+  const amountLater = isPayment ? paymentRedesignSummary.rest : payStage === 'now' ? '0 ₽' : '4 000 ₽';
+  const bookingTotal = isPayment ? formatRub(paymentExperimentTotal) : '4 000 ₽';
+  const registrationAmount = isPayment ? '33 200 ₽' : '3 200 ₽';
   const primaryCta = payStage === 'now' ? 'Оплатить' : 'Забронировать';
 
   function updateField(name, value) {
@@ -175,7 +271,7 @@ function App({ variant = 'baseline' }) {
   }
 
   return (
-    <div className={isNext ? 'checkout-page checkout-page-next' : 'checkout-page'}>
+    <div className={pageClassName}>
       <div className="site-shell">
         <div className="checkout-module">
           <header className="checkout-header">
@@ -491,68 +587,84 @@ function App({ variant = 'baseline' }) {
                   <Button variant={buttonVariantEnum.accent}>Зарегистрироваться</Button>
                 </div> : null}
 
-                <Card className="payment-card-block" title={isNext ? 'Способы оплаты' : 'Выберите способ оплаты'}>
-                  <div className="payment-control-block">
-                    <div className="payment-choice-row">
-                      <div className="payment-choice-label">Когда оплатить</div>
-                      <div className="payment-stage-tabs">
-                        {payStageItems.map((item) => (
-                          <button className={payStage === item.value ? 'payment-stage-tab payment-stage-tab-selected' : 'payment-stage-tab'} key={item.value} onClick={() => changePayStage(item.value)} type="button">
-                            <span className="payment-stage-tab-title">{item.label}</span>
-                            <span className="payment-stage-tab-caption">{paymentGroups[item.value].notice}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                <Card className="payment-card-block" title={isPayment ? 'Выберите способы оплаты' : isNext ? 'Способы оплаты' : 'Выберите способ оплаты'}>
+                  {isPayment ? (
+                    <PaymentRedesignBlock
+                      legalPrepayment={selectedLegalPrepayment}
+                      payStage={payStage}
+                      selectedPayment={selectedPayment}
+                      onLegalPrepaymentChange={setSelectedLegalPrepayment}
+                      onSelect={setSelectedPayment}
+                      onStageChange={(value) => {
+                        setPayStage(value);
+                        setSelectedPayment(paymentRedesignGroups[value].methods[0].value);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <div className="payment-control-block">
+                        <div className="payment-choice-row">
+                          <div className="payment-choice-label">Когда оплатить</div>
+                          <div className="payment-stage-tabs">
+                            {payStageItems.map((item) => (
+                              <button className={payStage === item.value ? 'payment-stage-tab payment-stage-tab-selected' : 'payment-stage-tab'} key={item.value} onClick={() => changePayStage(item.value)} type="button">
+                                <span className="payment-stage-tab-title">{item.label}</span>
+                                <span className="payment-stage-tab-caption">{paymentGroups[item.value].notice}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
 
-                    <div className="payment-choice-row">
-                      <div className="payment-choice-label">Сумма предоплаты</div>
-                      <div className="prepayment-options">
-                        {visiblePrepaymentOptions.map((option) => (
+                        <div className="payment-choice-row">
+                          <div className="payment-choice-label">Сумма предоплаты</div>
+                          <div className="prepayment-options">
+                            {visiblePrepaymentOptions.map((option) => (
+                              <button
+                                className={selectedPrepayment === option.value ? 'prepayment-chip prepayment-chip-selected' : 'prepayment-chip'}
+                                key={option.value}
+                                onClick={() => selectPrepayment(option.value)}
+                                type="button"
+                              >
+                                <span className="prepayment-chip-title-wrap">
+                                  <span className="prepayment-chip-title">{option.title}</span>
+                                  {option.recommended ? <span className="prepayment-recommend-badge">Рекомендуем</span> : null}
+                                </span>
+                                <span className="prepayment-chip-amount">{option.amount}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="payment-methods-row">
+                        {filteredPaymentMethods.map((option) => (
                           <button
-                            className={selectedPrepayment === option.value ? 'prepayment-chip prepayment-chip-selected' : 'prepayment-chip'}
                             key={option.value}
-                            onClick={() => selectPrepayment(option.value)}
+                            className={option.value === selectedPayment ? 'payment-method-card payment-method-card-active' : 'payment-method-card'}
+                            onClick={() => setSelectedPayment(option.value)}
                             type="button"
                           >
-                            <span className="prepayment-chip-title-wrap">
-                              <span className="prepayment-chip-title">{option.title}</span>
-                              {option.recommended ? <span className="prepayment-recommend-badge">Рекомендуем</span> : null}
-                            </span>
-                            <span className="prepayment-chip-amount">{option.amount}</span>
+                            <div className="payment-method-icon-wrap">
+                              {option.brands ? <PaymentBrands brands={option.brands} /> : <PaymentIcon type={option.icon} />}
+                            </div>
+                            <div className="payment-method-content">
+                              <div className="payment-method-title-row">
+                                <strong>{option.title}</strong>
+                                <span className={option.value === selectedPayment ? 'payment-circle payment-circle-active' : 'payment-circle'} />
+                              </div>
+                              {option.caption ? <span className="payment-method-caption">{option.caption}</span> : null}
+                            </div>
                           </button>
                         ))}
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="payment-methods-row">
-                    {filteredPaymentMethods.map((option) => (
-                      <button
-                        key={option.value}
-                        className={option.value === selectedPayment ? 'payment-method-card payment-method-card-active' : 'payment-method-card'}
-                        onClick={() => setSelectedPayment(option.value)}
-                        type="button"
-                      >
-                        <div className="payment-method-icon-wrap">
-                          {option.brands ? <PaymentBrands brands={option.brands} /> : <PaymentIcon type={option.icon} />}
+                      {!isNext && selectedPrepayment !== 'none' ? (
+                        <div className="payment-after-pay-note">
+                          <span className="payment-info-icon">i</span>
+                          <span>После оплаты вы получите подтверждение бронирования на email и сможете управлять бронированием в личном кабинете.</span>
                         </div>
-                        <div className="payment-method-content">
-                          <div className="payment-method-title-row">
-                            <strong>{option.title}</strong>
-                            <span className={option.value === selectedPayment ? 'payment-circle payment-circle-active' : 'payment-circle'} />
-                          </div>
-                          {option.caption ? <span className="payment-method-caption">{option.caption}</span> : null}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  {!isNext && selectedPrepayment !== 'none' ? (
-                    <div className="payment-after-pay-note">
-                      <span className="payment-info-icon">i</span>
-                      <span>После оплаты вы получите подтверждение бронирования на email и сможете управлять бронированием в личном кабинете.</span>
-                    </div>
-                  ) : null}
+                      ) : null}
+                    </>
+                  )}
                 </Card>
 
                 <div className="security-note">
@@ -584,7 +696,7 @@ function App({ variant = 'baseline' }) {
                   </div>
 
                   <div className="summary-panel summary-panel-accent room-panel">
-                    <div className="summary-row"><strong>Дом:</strong><strong>4 000 ₽</strong></div>
+                    <div className="summary-row"><strong>Дом:</strong><strong>{bookingTotal}</strong></div>
                     <button className="room-toggle-button" onClick={() => setIsRoomOpen((current) => !current)} type="button">
                       <span>Одноместный</span>
                       <span className={isRoomOpen ? 'tiny-chevron tiny-chevron-up' : 'tiny-chevron tiny-chevron-down'} />
@@ -594,8 +706,8 @@ function App({ variant = 'baseline' }) {
                   {isRoomOpen ? (
                     <>
                       <div className="summary-panel">
-                        <div className="summary-row summary-row-strong"><span>2 взрослых на основном месте</span><span>4 000 ₽</span></div>
-                        <div className="summary-discount-line"><span>Скидка 15% за регистрацию</span><span>4 000 ₽</span></div>
+                        <div className="summary-row summary-row-strong"><span>2 взрослых на основном месте</span><span>{bookingTotal}</span></div>
+                        <div className="summary-discount-line"><span>Скидка 15% за регистрацию</span><span>{bookingTotal}</span></div>
                         <div className="summary-dashed" />
                         <div className="summary-services-title">Услуги</div>
                         <div className="summary-row"><span>Завтрак "Английский"</span><span>Вкл.</span></div>
@@ -603,9 +715,9 @@ function App({ variant = 'baseline' }) {
 
                       <div className="summary-panel total-panel">
                         <div className="summary-register-row">
-                          <span className="summary-register-chip">За регистрацию 3 200 ₽ <span className="tiny-chevron tiny-chevron-right" /></span>
+                          <span className="summary-register-chip">За регистрацию {registrationAmount} <span className="tiny-chevron tiny-chevron-right" /></span>
                         </div>
-                        <div className="summary-total-line"><strong>Итого</strong><div className="summary-total-value">4 000 ₽</div></div>
+                        <div className="summary-total-line"><strong>Итого</strong><div className="summary-total-value">{bookingTotal}</div></div>
                         <div className="summary-tax">Налоги и сборы включены</div>
                       </div>
                     </>
@@ -613,7 +725,7 @@ function App({ variant = 'baseline' }) {
 
                   <div className="summary-panel pay-panel">
                     <div className="summary-row pay-now-row"><strong>К оплате сейчас</strong><strong>{amountNow}</strong></div>
-                    <div className="summary-row pay-later-row"><span>{payStage === 'now' ? 'После оплаты' : 'До заезда'}</span><span>{payStage === 'now' ? '0 ₽' : '4 000 ₽'}</span></div>
+                    <div className="summary-row pay-later-row"><span>{isPayment ? 'Остаток' : payStage === 'now' ? 'После оплаты' : 'До заезда'}</span><span>{amountLater}</span></div>
                     <Button variant={buttonVariantEnum.primary} width={buttonWidthEnum.full}>{primaryCta}</Button>
                   </div>
 
@@ -698,6 +810,93 @@ function PhoneInput({ onChange, placeholder, required = false, value }) {
       <TextField className="phone-field-new-input" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} showTooltip={false} value={value} />
       {required ? <span className="phone-field-new-star">*</span> : null}
     </div>
+  );
+}
+
+function PaymentRedesignBlock({ legalPrepayment, onLegalPrepaymentChange, onSelect, onStageChange, payStage, selectedPayment }) {
+  const group = paymentRedesignGroups[payStage];
+
+  return (
+    <>
+      <div className="payment-redesign-stage-tabs">
+        <button className={payStage === 'later' ? 'payment-stage-tab payment-stage-tab-selected' : 'payment-stage-tab'} onClick={() => onStageChange('later')} type="button">
+          <span className="payment-stage-tab-title">Оплатить потом</span>
+        </button>
+        <button className={payStage === 'now' ? 'payment-stage-tab payment-stage-tab-selected' : 'payment-stage-tab'} onClick={() => onStageChange('now')} type="button">
+          <span className="payment-stage-tab-title">Оплатить сейчас</span>
+        </button>
+      </div>
+
+      <div className="payment-redesign-rules-row">
+        <span className="payment-return-icon">↩</span>
+        <span>{group.notice}</span>
+        <button className="rules-link-button" type="button">Правила отмены бронирования</button>
+      </div>
+
+      <div className="payment-redesign-list">
+        {group.methods.map((method) => {
+          const isSelected = selectedPayment === method.value;
+          const summary = getPaymentRedesignMethodSummary(payStage, method.value, legalPrepayment);
+
+          return (
+            <div
+              className={isSelected ? 'payment-redesign-option payment-redesign-option-selected' : 'payment-redesign-option'}
+              key={method.value}
+              onClick={() => onSelect(method.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelect(method.value);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="payment-redesign-logo-cell">
+                {method.brands ? <PaymentBrands brands={method.brands} /> : <PaymentIcon type={method.icon} />}
+              </div>
+              <div className="payment-redesign-main">
+                <div className="payment-redesign-title-row">
+                  <strong>{method.title}</strong>
+                  {method.badge ? <span className="payment-redesign-method-badge">{method.badge}</span> : null}
+                  {method.recommended ? <span className="prepayment-recommend-badge">Рекомендуем</span> : null}
+                </div>
+              </div>
+              <div className="payment-redesign-column payment-redesign-now">
+                <span>Сейчас к оплате</span>
+                {method.prepaymentSelector ? (
+                  <span className="payment-redesign-chip-group">
+                    {paymentExperimentLegalPrepaymentOptions.map((option) => (
+                      <button
+                        className={legalPrepayment === option.value ? 'prepayment-chip prepayment-chip-selected payment-redesign-chip' : 'prepayment-chip payment-redesign-chip'}
+                        key={option.value}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onLegalPrepaymentChange(option.value);
+                          onSelect(method.value);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        type="button"
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </span>
+                ) : null}
+                <strong>{summary.now}</strong>
+                {method.nowDetails ? method.nowDetails.map((item) => <small key={item}>{item}</small>) : null}
+              </div>
+              <div className="payment-redesign-column payment-redesign-rest">
+                <span>Остаток</span>
+                <strong>{summary.rest}</strong>
+                {method.restDetails ? method.restDetails.map((item) => <small key={item}>{item}</small>) : null}
+              </div>
+              <span className={isSelected ? 'payment-circle payment-circle-active payment-redesign-radio' : 'payment-circle payment-redesign-radio'} />
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 

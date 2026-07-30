@@ -743,6 +743,167 @@ input {
   color: #7f8895;
 }
 
+.payment-redesign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.payment-redesign-stage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.payment-redesign-stage-tabs .payment-stage-tab {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+}
+
+.payment-redesign-rules-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: #404954;
+  font-size: 14px;
+}
+
+.payment-redesign-option {
+  width: 100%;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 72px minmax(150px, 1fr) minmax(190px, 230px) minmax(180px, 220px) 32px;
+  align-items: start;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #c7d0db;
+  border-radius: 8px;
+  background: #fff;
+  color: #404954;
+  text-align: left;
+  cursor: pointer;
+}
+
+.payment-redesign-option:focus-visible {
+  outline: 2px solid #5b98ee;
+  outline-offset: 2px;
+}
+
+.payment-redesign-option-selected {
+  border-color: #5b98ee;
+  background: #f3f8ff;
+  box-shadow: inset 0 0 0 1px #5b98ee;
+}
+
+.payment-redesign-logo-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 68px;
+  padding-top: 1px;
+}
+
+.payment-redesign-method-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: #d7f6f1;
+  color: #037e73;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.payment-redesign-main {
+  min-width: 0;
+}
+
+.payment-redesign-title-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.payment-redesign-title-row strong {
+  color: #404954;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.payment-redesign-column span {
+  color: #606974;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.payment-redesign-chip-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.payment-redesign-chip.prepayment-chip {
+  min-width: 0;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: default;
+}
+
+.payment-redesign-chip.prepayment-chip + .payment-redesign-chip.prepayment-chip {
+  margin-left: -1px;
+}
+
+.payment-redesign-column {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-self: stretch;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 1px solid #dfe5ee;
+}
+
+.payment-redesign-column strong {
+  color: #404954;
+  font-size: 15px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.payment-redesign-column small {
+  color: #606974;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.payment-redesign-radio {
+  justify-self: end;
+  width: 28px;
+  height: 28px;
+}
+
+.payment-redesign-radio.payment-circle-active::before {
+  font-size: 16px;
+}
+
+.payment-redesign-logo-cell .payment-method-icon {
+  width: 22px;
+  height: 22px;
+}
+
 .payment-stage-row {
   gap: 12px;
 }
@@ -1113,7 +1274,7 @@ input {
 .payment-brand-mc::after {
   content: '';
   position: absolute;
-  top: 1px;
+  top: 8px;
   width: 13px;
   height: 13px;
   border-radius: 50%;
@@ -1127,6 +1288,31 @@ input {
 .payment-brand-mc::after {
   right: 2px;
   background: #ffc738;
+}
+
+.payment-redesign-logo-cell .payment-brand-stack .payment-brand {
+  width: 26px;
+  height: 26px;
+  font-size: 9px;
+}
+
+.payment-redesign-logo-cell .payment-brand-stack .payment-brand + .payment-brand {
+  margin-left: -5px;
+}
+
+.payment-redesign-logo-cell .payment-brand-mc::before,
+.payment-redesign-logo-cell .payment-brand-mc::after {
+  top: 7px;
+  width: 11px;
+  height: 11px;
+}
+
+.payment-redesign-logo-cell .payment-brand-mc::before {
+  left: 4px;
+}
+
+.payment-redesign-logo-cell .payment-brand-mc::after {
+  right: 4px;
 }
 
 .payment-option {
@@ -1814,6 +2000,30 @@ input {
   .fields-grid,
   .single-column-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .payment-redesign-option {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .payment-redesign-logo-cell,
+  .payment-redesign-main,
+  .payment-redesign-column {
+    grid-column: 1 / -1;
+  }
+
+  .payment-redesign-column {
+    min-height: auto;
+    padding: 10px 0 0;
+    border-top: 1px solid #e1e6ee;
+    border-left: 0;
+  }
+
+  .payment-redesign-radio {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .details-modal {
